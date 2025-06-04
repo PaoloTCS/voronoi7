@@ -1,0 +1,12 @@
+Title: Mechanisms of Self-Organization
+
+Abstract: Self-organization describes the process where internal organization of a system increases in complexity without being guided or managed by an outside source. This paper details common mechanisms such as positive and negative feedback, and stochastic resonance.
+
+Chapter 1: Feedback Loops
+Positive feedback amplifies initial changes, potentially leading to rapid growth or runaway effects. Negative feedback, conversely, acts to stabilize a system, counteracting deviations from a set point. The interplay of these loops is vital for adaptive self-organization.
+
+Chapter 2: Attractors and Stability
+Dynamical systems often evolve towards attractors, which are states or sets of states that the system tends to settle into. The stability of these attractors and the basins of attraction define the system's resilience. Understanding attractors is key to predicting system behavior.
+
+Chapter 3: Application to Neural Networks
+In the context of artificial neural networks, the learning process can be viewed as a self-organizing system. Weight adjustments via backpropagation, guided by a loss function, lead the network towards an attractor state in weight space that represents a good solution to the task. The network discovers features.

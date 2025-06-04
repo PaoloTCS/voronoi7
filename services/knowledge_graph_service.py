@@ -1,6 +1,7 @@
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from models.knowledge_graph import KnowledgeGraph # Assuming KnowledgeGraph is defined
 from models.document import Document # Example, adjust as needed
+from models.super_token import SuperToken
 import gmpy2 # If primes are used here
 
 class KnowledgeGraphService:
@@ -8,6 +9,9 @@ class KnowledgeGraphService:
         self.graph = knowledge_graph if knowledge_graph else KnowledgeGraph(name="MainKG")
         # TODO: Initialize prime assignment strategy related data if needed
         # e.g., self.prime_map_for_nodes = {}
+        
+        # Storage for SuperTokens
+        self.super_tokens: Dict[str, SuperToken] = {} # Store by SuperToken ID
 
     def add_document_to_graph(self, document: Document):
         # TODO: Logic to add document and its chunks as nodes,
@@ -73,13 +77,43 @@ class KnowledgeGraphService:
             print(f"Error finding path between {start_node_label} and {end_node_label}: {e}")
             return None
 
-    # Placeholder for SuperToken logic
-    def register_super_token_for_path(self, path_node_labels: List[str], claim: str):
-        print(f"Placeholder: Registering SuperToken for path {path_node_labels} with claim '{claim}'.")
-        # 1. Get edge primes for the path
-        # 2. Encode path
-        # 3. Create and store SuperToken
-        pass
+    def register_super_token(self,
+                             path_node_labels: List[str],
+                             edge_atomic_primes: List[Any],
+                             encoded_c: Any,
+                             encoded_d: int,
+                             claim: str) -> Optional[SuperToken]:
+        """
+        Creates a SuperToken from a path and its encoding, and registers it.
+        """
+        if not path_node_labels or len(path_node_labels) < 2:
+            print("Error: Path for SuperToken must have at least 2 nodes (1 edge).")
+            return None
+        if not claim:
+            print("Error: SuperToken must have a claim.")
+            return None
+        if not edge_atomic_primes or len(edge_atomic_primes) != len(path_node_labels) -1:
+            print("Error: Mismatch between path length and number of edge primes for SuperToken.")
+            return None
+
+        st_instance = SuperToken(
+            claim=claim,
+            path_node_labels=list(path_node_labels), # Store a copy
+            edge_atomic_primes=list(edge_atomic_primes), # Store a copy
+            path_code_c=encoded_c,
+            path_code_d=encoded_d
+        )
+        self.super_tokens[st_instance.id] = st_instance
+        print(f"Registered SuperToken: {st_instance}")
+
+        # Optional: Add SuperToken as a node in the main KnowledgeGraph
+        # This requires defining how a SuperToken node itself is represented (properties, etc.)
+        # For now, we just store it in the service's dictionary.
+        # Example:
+        # st_node = KnowledgeNode(id=st_instance.id, node_type='super_token', content_id=st_instance.id, properties={'claim': claim})
+        # self.graph.add_node(st_node) # self.graph is the KnowledgeGraph model instance
+        
+        return st_instance
 
     def get_node_degree(self, node_label: str) -> int:
         """

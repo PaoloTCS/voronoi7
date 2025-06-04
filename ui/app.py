@@ -29,12 +29,13 @@ if _project_root not in sys.path:
 # Project Modules
 from models.document import Document
 from models.chunk import Chunk
+from models.super_token import SuperToken
 from services.ai.embedding_service import EmbeddingService
 from services.ai.analysis_service import AnalysisService
 from visualization.scatter_plotter import VisualizationService
 from services.ai.text_processor import ContextualChunker
 from services.knowledge_graph_service import KnowledgeGraphService
-from models.knowledge_graph import KnowledgeGraph
+from models.knowledge_graph import KnowledgeGraph, KnowledgeNode
 from services.path_encoding_service import PathEncodingService
 
 # --- Plotly Configuration to Suppress Web Worker Warnings ---
@@ -647,7 +648,12 @@ if path_encoding_service and knowledge_graph_service and \
    st.session_state.get('all_chunk_labels') and \
    knowledge_graph_service.graph and knowledge_graph_service.graph.graph.number_of_nodes() > 0:
 
+    # Debug information
+    st.sidebar.write(f"DEBUG (Path Enc): KG Service Graph Nodes: {knowledge_graph_service.graph.graph.number_of_nodes()}")
+    st.sidebar.write(f"DEBUG (Path Enc): KG Service Graph Edges: {knowledge_graph_service.graph.graph.number_of_edges()}")
+    
     node_options = sorted(list(knowledge_graph_service.graph.graph.nodes())) # Get nodes from the actual graph
+    st.sidebar.write(f"DEBUG (Path Enc): Node options for dropdown: {node_options[:5] if len(node_options) > 5 else node_options}") # Show first 5 or all if <=5
 
     # --- Helper to format node label for display ---
     def format_node_label(node_label):
@@ -737,8 +743,57 @@ if path_encoding_service and knowledge_graph_service and \
 
                                 if decoded_primes and all(p_orig == p_dec for p_orig, p_dec in zip(edge_prime_ids_gmpy, decoded_primes)) and len(decoded_primes) == len(edge_prime_ids_gmpy):
                                     st.sidebar.success("Encode/Decode Test Passed for selected path!")
-                                else:
-                                    st.sidebar.error("Encode/Decode Test Failed for selected path.")
+                                    
+                                    # SuperToken Registration Section
+                                    st.sidebar.markdown("---")
+                                    st.sidebar.subheader("🌟 Register Path as SuperToken")
+                                    
+                                    # Add explanatory information
+                                    with st.sidebar.expander("ℹ️ What are SuperTokens?", expanded=False):
+                                        st.markdown("""
+                                        **SuperTokens** are revolutionary knowledge artifacts that capture meaningful semantic pathways between concepts in your documents.
+                                        
+                                        **Key Features:**
+                                        - **🔗 Semantic Pathways**: Capture reasoning journeys between related concepts
+                                        - **🔢 Mathematical Encoding**: Store pathways using Gödel-style prime number theory
+                                        - **♻️ Reusable Knowledge**: Create building blocks for complex analysis
+                                        - **🎯 Reversible Process**: Can decode paths back to original concepts
+                                        
+                                        **Why Register This Path?**
+                                        This pathway represents a meaningful connection in your knowledge graph. By registering it as a SuperToken, you're creating a reusable knowledge artifact that can be:
+                                        - Referenced in future analysis
+                                        - Combined with other SuperTokens
+                                        - Used as building blocks for higher-order reasoning
+                                        """)
+                                    
+                                    st.sidebar.info("💡 **Tip**: Write a descriptive claim that explains what this pathway represents conceptually.")
+                                    
+                                    super_token_claim = st.sidebar.text_input(
+                                        "Enter claim/description for this SuperToken:",
+                                        placeholder="e.g., 'This path shows the connection between LSTM architecture concepts and memory mechanisms'",
+                                        key=f"st_claim_{start_node}_{end_node}" # Unique key
+                                    )
+
+                                    if st.sidebar.button("Register SuperToken", key=f"st_register_{start_node}_{end_node}"):
+                                        if not super_token_claim.strip():
+                                            st.sidebar.error("SuperToken claim cannot be empty.")
+                                        else:
+                                            # Pass path_node_labels, edge_prime_ids_gmpy, code_c, depth_d, claim
+                                            new_st = knowledge_graph_service.register_super_token(
+                                                path_node_labels,
+                                                edge_prime_ids_gmpy, # The list of small atomic primes
+                                                code_c,
+                                                depth_d,
+                                                super_token_claim
+                                            )
+                                            if new_st:
+                                                st.sidebar.success(f"SuperToken Registered: {new_st.id} - '{new_st.claim}'")
+                                                # Optionally display more ST info or add to a list in session_state for viewing
+                                                if 'registered_super_tokens' not in st.session_state:
+                                                    st.session_state.registered_super_tokens = []
+                                                st.session_state.registered_super_tokens.append(new_st)
+                                            else:
+                                                st.sidebar.error("Failed to register SuperToken.")
                             else:
                                 st.sidebar.error("Path encoding failed.")
                 else:
@@ -776,7 +831,41 @@ if path_encoding_service and knowledge_graph_service and \
                         except Exception as e:
                             st.sidebar.error(f"Error analyzing connected component: {e}")
 else:
-    st.sidebar.info("Generate a graph with chunks first to test path encoding.")
+    st.sidebar.markdown("### 🔬 Path Encoding & SuperTokens")
+    st.sidebar.info("""
+    **Path Encoding** allows you to mathematically capture semantic pathways between concepts in your knowledge graph using Gödel-style prime number theory.
+    
+    **What you can do:**
+    - Select any two connected nodes in your semantic graph
+    - Encode the pathway between them as a unique mathematical signature
+    - Register meaningful pathways as reusable **SuperTokens**
+    """)
+    
+    with st.sidebar.expander("🚀 How to Get Started", expanded=True):
+        st.markdown("""
+        **To use Path Encoding:**
+        
+        1. **📁 Load Documents**: Upload and process documents in the Upload tab
+        2. **🧠 Generate Embeddings**: Create embeddings for your chunks
+        3. **🕸️ Create Semantic Graph**: Use "Show Semantic Graph" button above
+        4. **🎯 Select Pathway**: Choose two connected nodes to encode
+        5. **🌟 Register SuperToken**: Save meaningful pathways for reuse
+        """)
+    
+    # Keep debug info but make it collapsible
+    with st.sidebar.expander("🔧 Debug Information", expanded=False):
+        st.write("**Checking system readiness:**")
+        st.write(f"  - Path encoding service: {'✅' if path_encoding_service is not None else '❌'}")
+        st.write(f"  - Knowledge graph service: {'✅' if knowledge_graph_service is not None else '❌'}")
+        st.write(f"  - Chunk labels available: {'✅' if 'all_chunk_labels' in st.session_state and len(st.session_state.get('all_chunk_labels', [])) > 0 else '❌'}")
+        if knowledge_graph_service:
+            st.write(f"  - Knowledge graph exists: {'✅' if knowledge_graph_service.graph is not None else '❌'}")
+            if knowledge_graph_service.graph:
+                st.write(f"  - Graph has nodes: {'✅' if knowledge_graph_service.graph.graph is not None and knowledge_graph_service.graph.graph.number_of_nodes() > 0 else '❌'}")
+                if knowledge_graph_service.graph.graph:
+                    st.write(f"  - Node count: {knowledge_graph_service.graph.graph.number_of_nodes()}")
+        else:
+            st.write("  - Knowledge graph service: ❌ (None)")
 
 # --- Always show a Refresh button for Path Encoding UI ---
 if st.sidebar.button("Refresh Path Encoding UI"):
@@ -1497,11 +1586,25 @@ else:
                  if semantic_graph is not None:
                      if 'knowledge_graph_instance' in st.session_state and st.session_state['knowledge_graph_instance'] is not None:
                          kg_instance = st.session_state['knowledge_graph_instance'] # Get the object
-                         kg_instance.graph = semantic_graph  # Modify the object
-                         kg_instance.nodes = {}              # Modify the object
-                         kg_instance.edges = {}              # Modify the object
-                         # No need to write it back if KnowledgeGraph is mutable
-                         st.write("DEBUG: Updated knowledge_graph_instance in session state.")
+                         kg_instance.graph = semantic_graph  # Assign the generated nx.Graph
+                         
+                         # Clear and re-populate KnowledgeGraph.nodes based on the semantic_graph
+                         kg_instance.nodes = {}
+                         for node_id in semantic_graph.nodes():
+                             node_attrs = semantic_graph.nodes[node_id] if semantic_graph.nodes[node_id] else {}
+                             node_type = node_attrs.get('node_type', 'chunk')
+                             kg_instance.nodes[node_id] = KnowledgeNode(
+                                 id=node_id,
+                                 node_type=node_type,
+                                 content_id=node_id,
+                                 properties=dict(node_attrs)
+                             )
+                         
+                         # Clear edges for consistency
+                         kg_instance.edges = {}
+                         
+                         st.write(f"DEBUG: Updated knowledge_graph_instance in session state with {semantic_graph.number_of_nodes()} nodes and {semantic_graph.number_of_edges()} edges.")
+                         st.write(f"DEBUG: KnowledgeGraph.nodes populated with {len(kg_instance.nodes)} KnowledgeNode objects.")
                      else:
                          st.warning("DEBUG: knowledge_graph_instance not found in session state to update.")
             else:
@@ -1584,3 +1687,102 @@ else:
                 except Exception as viz_error:
                     st.error(f"Error rendering graph: {viz_error}")
                     st.code(traceback.format_exc())
+
+# --- Registered SuperTokens Section ---
+if 'registered_super_tokens' in st.session_state and st.session_state.registered_super_tokens:
+    st.markdown("---")
+    st.header("🌟 Registered SuperTokens")
+    
+    # Enhanced explanation
+    st.markdown("""
+    **SuperTokens** are mathematical knowledge artifacts that represent meaningful semantic pathways in your data. 
+    Each SuperToken captures a specific reasoning journey between concepts and encodes it using advanced Gödel-style mathematics.
+    """)
+    
+    # Add summary statistics
+    num_tokens = len(st.session_state.registered_super_tokens)
+    st.metric("Total SuperTokens Registered", num_tokens)
+    
+    # Add explanatory section
+    with st.expander("📚 Understanding SuperToken Components", expanded=False):
+        st.markdown("""
+        Each SuperToken contains several key components:
+        
+        **🎯 Claim**: A human-readable description of what this pathway represents conceptually.
+        
+        **🔗 Path Nodes**: The sequence of concepts (document chunks) that form this semantic journey.
+        
+        **🔢 Edge Atomic Primes**: Small prime numbers assigned to each edge in the path. These are used in the mathematical encoding.
+        
+        **📊 Encoded (C)**: The Gödel number - a unique mathematical representation of the entire pathway using prime number theory.
+        
+        **📏 Depth (d)**: The current encoding depth (starts at 0, can be increased for hierarchical encoding).
+        
+        **🔄 Mathematical Reversibility**: The encoding is fully reversible - you can always decode back to the original pathway.
+        """)
+    
+    # Display each SuperToken with enhanced formatting
+    for idx, st_item in enumerate(st.session_state.registered_super_tokens):
+        with st.expander(f"🌟 SuperToken {idx+1}: {st_item.claim[:60]}{'...' if len(st_item.claim) > 60 else ''}", expanded=False):
+            # Header with ID
+            st.markdown(f"**🆔 SuperToken ID:** `{st_item.id}`")
+            st.markdown("---")
+            
+            # Claim section
+            st.markdown("**🎯 Claim (What this pathway represents):**")
+            st.info(st_item.claim)
+            
+            # Path visualization
+            st.markdown("**🛤️ Semantic Pathway:**")
+            path_display = " → ".join([
+                f"**{node[:35]}{'...' if len(node) > 35 else ''}**" 
+                for node in st_item.path_node_labels
+            ])
+            st.markdown(path_display)
+            
+            # Technical details in columns
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("**🔢 Mathematical Encoding:**")
+                st.code(f"Gödel Number (C): {st_item.path_code_c}")
+                st.code(f"Encoding Depth (d): {st_item.path_code_d}")
+            
+            with col2:
+                st.markdown("**🔗 Edge Primes:**")
+                primes_str = ", ".join([str(p) for p in st_item.edge_atomic_primes])
+                st.code(f"Primes: [{primes_str}]")
+            
+            # Detailed path breakdown
+            if len(st_item.path_node_labels) > 1:
+                st.markdown("**📋 Detailed Path Breakdown:**")
+                for i in range(len(st_item.path_node_labels) - 1):
+                    node_from = st_item.path_node_labels[i]
+                    node_to = st_item.path_node_labels[i + 1]
+                    prime = st_item.edge_atomic_primes[i] if i < len(st_item.edge_atomic_primes) else "N/A"
+                    
+                    # Format node names for better readability
+                    from_display = node_from.split("::")[-1][:30] if "::" in node_from else node_from[:30]
+                    to_display = node_to.split("::")[-1][:30] if "::" in node_to else node_to[:30]
+                    
+                    st.markdown(f"**Step {i+1}:** `{from_display}...` → `{to_display}...` *(Prime: {prime})*")
+
+# Add helpful information when no SuperTokens exist
+else:
+    st.markdown("---")
+    st.header("🌟 SuperTokens")
+    st.info("""
+    **No SuperTokens registered yet.**
+    
+    SuperTokens are mathematical knowledge artifacts that capture meaningful semantic pathways in your data. 
+    
+    **To create your first SuperToken:**
+    1. Generate a semantic graph using the "Show Semantic Graph" button
+    2. Use the "Test Path Encoding" sidebar to select two connected nodes
+    3. Click "Encode Selected Path" to test the mathematical encoding
+    4. Use "Register Path as SuperToken" to save meaningful pathways
+    
+    SuperTokens enable you to build a library of reusable knowledge artifacts for advanced semantic analysis.
+    """)
+
+# --- Main Function and App Routing ---
